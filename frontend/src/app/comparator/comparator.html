@@ -1,0 +1,82 @@
+<div class="p-6 md:p-10 min-h-screen bg-gray-50 flex flex-col items-center">
+    <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800 mb-6">
+    {{ appTitle }} 📄
+    </h1>
+
+    <!-- File Inputs Section -->
+    <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    
+    <!-- File A Input -->
+    <div class="p-5 bg-white border border-gray-200 rounded-xl shadow-lg transition duration-300 hover:shadow-xl">
+        <h3 class="text-lg font-semibold text-gray-700 mb-3">File A (Original)</h3>
+        <input 
+        type="file" 
+        (change)="onFileSelected($event, 'original')"
+        class="w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100"
+        />
+        <p *ngIf="originalContent()" class="mt-2 text-xs text-green-600">File loaded successfully ({{ originalContent()?.length || 0 }} characters)</p>
+    </div>
+
+    <!-- File B Input -->
+    <div class="p-5 bg-white border border-gray-200 rounded-xl shadow-lg transition duration-300 hover:shadow-xl">
+        <h3 class="text-lg font-semibold text-gray-700 mb-3">File B (Changed)</h3>
+        <input 
+        type="file" 
+        (change)="onFileSelected($event, 'changed')"
+        class="w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100"
+        />
+        <p *ngIf="changedContent()" class="mt-2 text-xs text-green-600">File loaded successfully ({{ changedContent()?.length || 0 }} characters)</p>
+    </div>
+    </div>
+
+    <!-- Content Display Section -->
+    @if (originalContent() || changedContent()) {
+    <h2 class="text-2xl font-bold text-gray-800 mt-4 mb-4 w-full max-w-4xl">File Contents:</h2>
+    <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        
+        <!-- File A Content -->
+        <div class="bg-gray-800 text-white rounded-lg p-3 shadow-xl h-96 overflow-auto font-mono text-sm">
+        <h4 class="text-xs text-gray-400 mb-2">File A Content:</h4>
+        <pre class="whitespace-pre-wrap">{{ originalContent() || 'No file A content loaded...' }}</pre>
+        </div>
+
+        <!-- File B Content -->
+        <div class="bg-gray-800 text-white rounded-lg p-3 shadow-xl h-96 overflow-auto font-mono text-sm">
+        <h4 class="text-xs text-gray-400 mb-2">File B Content:</h4>
+        <pre class="whitespace-pre-wrap">{{ changedContent() || 'No file B content loaded...' }}</pre>
+        </div>
+    </div>
+    }
+
+    <!-- Comparison Result Section (Merged) -->
+    @if (originalContent() && changedContent()) {
+    <div class="w-full max-w-4xl p-6 rounded-xl shadow-2xl mt-4 
+                text-center transition-all duration-500"
+            [ngClass]="comparisonStyle()">
+        <h3 class="text-2xl font-bold mb-2">Comparison Result:</h3>
+        <p class="text-xl font-mono">{{ comparisonResult() }}</p>
+        
+        @if (comparisonResult() === 'Files are DIFFERENT.') {
+        <p class="mt-4 text-sm text-gray-600">
+            A character-by-character difference was found. 
+            (A dedicated diff-view component is needed to show line-by-line changes.)
+        </p>
+        }
+    </div>
+    } @else {
+    <div class="w-full max-w-4xl p-6 text-center text-gray-500 bg-white rounded-xl shadow-md">
+        <p>Load both files above to automatically see the comparison result.</p>
+    </div>
+    }
+
+</div>
