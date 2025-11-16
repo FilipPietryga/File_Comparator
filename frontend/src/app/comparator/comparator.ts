@@ -1,44 +1,52 @@
-import { CommonModule, NgClass } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, signal, ViewEncapsulation } from '@angular/core';
 import { FormsModule } from '@angular/forms'; 
+
+interface LineDiff {
+  lineA: string;
+  lineB: string;
+  status: 'EQUAL' | 'A_ONLY' | 'B_ONLY' | 'MODIFIED';
+  lineNumA: number | null;
+  lineNumB: number | null;
+}
 
 @Component({
   selector: 'comparator',
   templateUrl: './comparator.html',
-  styleUrls: ['./comparator.scss'],
-  imports: [CommonModule, NgClass, FormsModule],
+  imports: [CommonModule, FormsModule],
   standalone: true,
-  styles: [],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrl: './comparator.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None
 })
 export class Comparator {
   appTitle = 'Automated File Comparator';
 
-  originalContent = signal<string | null>(null);
-  changedContent = signal<string | null>(null);
+  originalContent = signal<string | null>(''); 
+  changedContent = signal<string | null>(''); 
+  
+  private readonly MAX_SEARCH = 5; 
 
-  ignoreWhitespace = signal<boolean>(true); 
+  private prepareContent(content: string): string {
+    return content ? content.replace(/\r/g, '') : '';
+  }
+  
+  private directComparisonResult = computed<string>(() => {
+    const original = this.prepareContent(this.originalContent() || '');
+    const changed = this.prepareContent(this.changedContent() || '');
 
-  private normalizedComparisonResult = computed<string>(() => {
-    const original = this.originalContent();
-    const changed = this.changedContent();
-    const ignore = this.ignoreWhitespace();
-
-    if (original === null || changed === null) {
+    if (!original.trim() && !changed.trim()) {
       return '';
     }
 
-    const normalizedOriginal = ignore ? this.normalizeContent(original) : original;
-    const normalizedChanged = ignore ? this.normalizeContent(changed) : changed;
-
-    if (normalizedOriginal === normalizedChanged) {
+    if (original === changed) {
       return 'Files are IDENTICAL.';
     } else {
       return 'Files are DIFFERENT.';
     }
   });
 
-  comparisonResult = this.normalizedComparisonResult;
+  comparisonResult = this.directComparisonResult;
 
   comparisonStyle = computed(() => {
     const result = this.comparisonResult();
@@ -50,15 +58,89 @@ export class Comparator {
     return ''; 
   });
 
-  private normalizeContent(content: string): string {
-    let cleaned = content
-      .replace(/[\r\n]+/g, ' ') 
-      .replace(/[\t\f\v]+/g, ' '); 
+  lineComparison = computed<LineDiff[]>(() => {
+    const original = this.originalContent() || '';
+    const changed = this.changedContent() || '';
 
-    cleaned = cleaned.replace(/\s+/g, ' ');
+    if (!original.trim() && !changed.trim()) {
+        return [];
+    }
+    
+    const linesA = original.split(/\r?\n/);
+    const linesB = changed.split(/\r?\n/);
 
-    return cleaned.trim();
-  }
+    const diffs: LineDiff[] = [];
+    let indexA = 0;
+    let indexB = 0;
+    let lineNumA = 1;
+    let lineNumB = 1;
+
+    while (indexA < linesA.length || indexB < linesB.length) {
+        const lineA = linesA[indexA] !== undefined ? linesA[indexA] : '';
+        const lineB = linesB[indexB] !== undefined ? linesB[indexB] : '';
+        
+        if (lineA === lineB && (lineA || lineB)) {
+            diffs.push({ lineA, lineB, status: 'EQUAL', lineNumA: lineNumA++, lineNumB: lineNumB++ });
+            indexA++;
+            indexB++;
+            continue;
+        }
+
+        let matched = false;
+
+        if (indexA < linesA.length) {
+            let k = indexB;
+            while (k < linesB.length && k < indexB + this.MAX_SEARCH) {
+                if (lineA === linesB[k]) {
+                    for (let l = indexB; l < k; l++) {
+                        diffs.push({ lineA: '', lineB: linesB[l], status: 'B_ONLY', lineNumA: null, lineNumB: lineNumB++ });
+                    }
+                    indexB = k;
+                    matched = true;
+                    diffs.push({ lineA, lineB: linesB[indexB], status: 'EQUAL', lineNumA: lineNumA++, lineNumB: lineNumB++ });
+                    indexA++; indexB++;
+                    break;
+                }
+                k++;
+            }
+        }
+        
+        if (!matched && indexB < linesB.length) {
+            let l = indexA;
+            while (l < linesA.length && l < indexA + this.MAX_SEARCH) {
+                if (lineB === linesA[l]) {
+                    for (let m = indexA; m < l; m++) {
+                        diffs.push({ lineA: linesA[m], lineB: '', status: 'A_ONLY', lineNumA: lineNumA++, lineNumB: null });
+                    }
+                    indexA = l;
+                    matched = true;
+                    diffs.push({ lineA: linesA[indexA], lineB, status: 'EQUAL', lineNumA: lineNumA++, lineNumB: lineNumB++ });
+                    indexA++; indexB++;
+                    break;
+                }
+                l++;
+            }
+        }
+
+        if (!matched) {
+            if (indexA < linesA.length && indexB < linesB.length) {
+                diffs.push({ lineA, lineB, status: 'MODIFIED', lineNumA: lineNumA++, lineNumB: lineNumB++ });
+                indexA++;
+                indexB++;
+            } else if (indexA < linesA.length) {
+                diffs.push({ lineA, lineB: '', status: 'A_ONLY', lineNumA: lineNumA++, lineNumB: null });
+                indexA++;
+            } else if (indexB < linesB.length) {
+                diffs.push({ lineA: '', lineB, status: 'B_ONLY', lineNumA: null, lineNumB: lineNumB++ });
+                indexB++;
+            } else {
+                break;
+            }
+        }
+    }
+
+    return diffs;
+  });
 
   onFileSelected(event: Event, type: 'original' | 'changed'): void {
     const input = event.target as HTMLInputElement;
@@ -82,60 +164,5 @@ export class Comparator {
     };
 
     reader.readAsText(file);
-  }
-
-  lineComparison = computed<{ lineA: string, lineB: string, status: 'EQUAL' | 'A_ONLY' | 'B_ONLY' }[]>(() => {
-    const original = this.originalContent();
-    const changed = this.changedContent();
-    const ignore = this.ignoreWhitespace();
-
-    if (!original || !changed) {
-      return [];
-    }
-
-    const linesA = original.split(/\r?\n/);
-    const linesB = changed.split(/\r?\n/);
-
-    const result: { lineA: string, lineB: string, status: 'EQUAL' | 'A_ONLY' | 'B_ONLY' }[] = [];
-    
-    const maxLength = Math.max(linesA.length, linesB.length);
-
-    for (let i = 0; i < maxLength; i++) {
-      const lineA = linesA[i] !== undefined ? linesA[i] : '';
-      const lineB = linesB[i] !== undefined ? linesB[i] : '';
-      
-      const compareA = ignore ? this.normalizeLine(lineA) : lineA;
-      const compareB = ignore ? this.normalizeLine(lineB) : lineB;
-
-      let status: 'EQUAL' | 'A_ONLY' | 'B_ONLY';
-      
-      if (compareA === compareB) {
-        status = 'EQUAL';
-      } else if (lineA && !lineB) {
-        status = 'A_ONLY'; 
-      } else if (!lineA && lineB) {
-        status = 'B_ONLY'; 
-      } else {
-        status = 'A_ONLY'; 
-      }
-
-      if (status === 'EQUAL') {
-        result.push({ lineA, lineB, status: 'EQUAL' });
-      } else {
-        if (lineA) {
-          result.push({ lineA, lineB: '', status: 'A_ONLY' });
-        }
-        if (lineB) {
-          result.push({ lineA: '', lineB, status: 'B_ONLY' });
-        }
-      }
-    }
-    
-    return result;
-  });
-
-
-  private normalizeLine(line: string): string {
-    return line.replace(/\s+/g, ' ').trim();
   }
 }
