@@ -9,3 +9,14 @@
     background-color: #FFF7ED;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
+
+:host ::ng-deep { 
+    .match {
+        border-color: #34d399; // green-400
+        background-color: #f0fdf4; // green-50
+    }
+    .mismatch {
+        border-color: #f87171; // red-400
+        background-color: #fff1f2; // red-50
+    }
+}

@@ -3,14 +3,14 @@
         {{ appTitle }} </h1>
 
     <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-lg mb-8">
-        <h2 class="text-xl font-bold text-gray-700 mb-4 w-full border-b pb-2">Manual Input (Live Diff):</h2>
+        <h2 class="text-xl font-bold text-gray-700 mb-4 w-full border-b pb-2">Manual Input:</h2>
         <div class="w-full flex font-mono text-sm border border-gray-300 rounded-md overflow-hidden h-64"> 
             
             <textarea
                 id="inputA"
                 #originalInput 
                 [(ngModel)]="originalContent" 
-                placeholder="Enter File A (original) text..."
+                placeholder="Enter Original File..."
                 class="w-1/2 p-2 border-r border-gray-300 bg-gray-50 outline-none resize-none h-full"
             ></textarea>
 
@@ -18,7 +18,7 @@
                 id="inputB"
                 #changedInput 
                 [(ngModel)]="changedContent" 
-                placeholder="Enter File B (changed) text..."
+                placeholder="Enter Changed File..."
                 class="w-1/2 p-2 bg-gray-50 outline-none resize-none h-full"
             ></textarea>
             
@@ -32,7 +32,7 @@
         <div class="w-full flex">
             
             <div class="w-1/2 mr-4 p-4 border border-gray-300 bg-white rounded-md transition duration-300">
-                <h3 class="text-lg font-semibold text-gray-800 mb-3">File A (Original)</h3>
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">Original File</h3>
                 <input 
                     type="file" 
                     (change)="onFileSelected($event, 'original')"
@@ -51,7 +51,7 @@
             </div>
 
             <div class="w-1/2 p-4 border border-gray-300 bg-white rounded-md transition duration-300">
-                <h3 class="text-lg font-semibold text-gray-800 mb-3">File B (Changed)</h3>
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">Changed File</h3>
                 <input 
                     type="file" 
                     (change)="onFileSelected($event, 'changed')"
@@ -72,72 +72,72 @@
     </div>
 
     @if (originalContent()?.length || changedContent()?.length) {
-        <div class="w-full p-4 border-2 mt-4 text-center transition-all duration-500 rounded-lg shadow-xl"
-            [ngClass]="comparisonStyle()">
-            <h3 class="text-2xl font-bold mb-2 text-gray-800">Comparison Result:</h3>
-            <p class="text-xl font-mono">{{ comparisonResult() }}</p>
-            
-            @if (comparisonResult() === 'Files are DIFFERENT.') {
-                <p class="mt-2 text-sm text-red-700 font-medium">
-                    Differences found. See the full line-by-line diff below.
-                </p>
-            }
+    <div class="w-full p-4 border-2 mt-4 text-center transition-all duration-500 rounded-lg shadow-xl"
+        [ngClass]="comparisonStyle()">
+        <h3 class="text-2xl font-bold mb-2 text-gray-800">Comparison Result:</h3>
+        <p class="text-xl font-mono">{{ comparisonResult() }}</p>
+        
+        @if (comparisonResult() === 'Files are DIFFERENT.') {
+            <p class="mt-2 text-sm text-red-700 font-medium">
+                Differences found. See the full line-by-line diff below.
+            </p>
+        }
+    </div>
+    
+    <h2 class="text-xl font-bold text-gray-700 mt-8 mb-3 w-full border-b pb-2">Full Line-by-Line Differences Summary:</h2>
+    
+    <div class="w-full text-sm font-mono border border-gray-400 overflow-auto rounded-lg shadow-lg">
+        <div class="grid grid-cols-[40px_1fr_40px_1fr] bg-gray-100 font-semibold sticky top-0 border-b border-gray-400">
+            <div class="p-2 text-right text-gray-600">#A</div>
+            <div class="p-2 text-gray-800 border-r border-gray-300">Original File</div>
+            <div class="p-2 text-right text-gray-600">#B</div>
+            <div class="p-2 text-gray-800">Changed File</div>
         </div>
-        
-        <h2 class="text-xl font-bold text-gray-700 mt-8 mb-3 w-full border-b pb-2">Full Line-by-Line Differences Summary:</h2>
-        
-        <div class="w-full text-sm font-mono border border-gray-400 overflow-auto rounded-lg shadow-lg">
-            <div class="grid grid-cols-[auto_1fr_auto_1fr] bg-gray-100 font-semibold sticky top-0 border-b border-gray-400">
-                <div class="p-2 text-right text-gray-600">#A</div>
-                <div class="p-2 text-gray-800 border-r border-gray-300">File A (Original)</div>
-                <div class="p-2 text-right text-gray-600">#B</div>
-                <div class="p-2 text-gray-800">File B (Changed)</div>
-            </div>
 
-            @for (diff of lineComparison(); track $index) {
-                <div class="grid grid-cols-[auto_1fr_auto_1fr] items-stretch border-t border-gray-200" 
+        @for (diff of lineComparison(); track $index) {
+            <div class="grid grid-cols-[40px_1fr_40px_1fr] items-stretch border-t border-gray-200" 
+                [ngClass]="{
+                    'bg-white': diff.status === 'EQUAL',
+                    'bg-red-50/70': diff.status === 'A_ONLY',
+                    'bg-green-50/70': diff.status === 'B_ONLY',
+                    'bg-yellow-50/70': diff.status === 'MODIFIED' 
+                }">
+                
+                <div class="p-2 text-right text-gray-500 border-r border-gray-200">
+                    {{ diff.lineNumA !== null ? diff.lineNumA : '' }}
+                </div>
+                
+                <div class="p-2 whitespace-pre-wrap border-r border-gray-300 text-gray-800"
                     [ngClass]="{
-                        'bg-white': diff.status === 'EQUAL',
-                        'bg-red-50/70': diff.status === 'A_ONLY',
-                        'bg-green-50/70': diff.status === 'B_ONLY',
-                        'bg-yellow-50/70': diff.status === 'MODIFIED' 
+                        'text-red-800 font-semibold': diff.status === 'A_ONLY',
+                        'text-yellow-900 font-semibold': diff.status === 'MODIFIED' 
                     }">
-                    
-                    <div class="p-2 text-right text-gray-500 border-r border-gray-200">
-                        {{ diff.lineNumA !== null ? diff.lineNumA : '' }}
-                    </div>
-                    
-                    <div class="p-2 whitespace-pre-wrap border-r border-gray-300 text-gray-800"
-                        [ngClass]="{
-                            'text-red-800 font-semibold': diff.status === 'A_ONLY',
-                            'text-yellow-900 font-semibold': diff.status === 'MODIFIED' 
-                        }">
-                        {{ diff.lineA }}
-                    </div>
-                    
-                    <div class="p-2 text-right text-gray-500 border-r border-gray-200">
-                        {{ diff.lineNumB !== null ? diff.lineNumB : '' }}
-                    </div>
-                    
-                    <div class="p-2 whitespace-pre-wrap text-gray-800"
-                        [ngClass]="{
-                            'text-green-800 font-semibold': diff.status === 'B_ONLY',
-                            'text-yellow-900 font-semibold': diff.status === 'MODIFIED'
-                        }">
-                        {{ diff.lineB }}
-                    </div>
+                    {{ diff.lineA }}
                 </div>
-            }
-            
-            @if (lineComparison().length === 0 && (originalContent()?.length || changedContent()?.length)) {
-                <div class="p-4 text-center text-gray-600 bg-white">
-                    No differences found. Files are identical or one file is empty.
+                
+                <div class="p-2 text-right text-gray-500 border-r border-gray-200">
+                    {{ diff.lineNumB !== null ? diff.lineNumB : '' }}
                 </div>
-            }
-        </div>
-    } @else {
-        <div class="w-full p-4 text-center text-gray-600 bg-gray-100 border border-gray-300 rounded-lg shadow">
-            <p>Load both files or enter text above to automatically see the comparison result.</p>
-        </div>
-    }
+                
+                <div class="p-2 whitespace-pre-wrap text-gray-800"
+                    [ngClass]="{
+                        'text-green-800 font-semibold': diff.status === 'B_ONLY',
+                        'text-yellow-900 font-semibold': diff.status === 'MODIFIED'
+                    }">
+                    {{ diff.lineB }}
+                </div>
+            </div>
+        }
+        
+        @if (lineComparison().length === 0 && (originalContent()?.length || changedContent()?.length)) {
+            <div class="p-4 text-center text-gray-600 bg-white">
+                No differences found. Files are identical or one file is empty.
+            </div>
+        }
+    </div>
+} @else {
+    <div class="w-full p-4 text-center text-gray-600 bg-gray-100 border border-gray-300 rounded-lg shadow">
+        <p>Load both files or enter text above to automatically see the comparison result.</p>
+    </div>
+}
 </div>
